@@ -1,0 +1,25 @@
+---
+version: 1
+matrix: generate
+solver_params:
+  method: PBiCGStab
+  abs_tolerance: 0.0
+  rel_tolerance: 0.0
+  convergence_info: 0
+  max_iters: 20
+preconditioner_params:
+  method: MultiGrid
+  convergence_info: 0
+  max_iters: 1
+  hypre_log: 0
+  mg_agg_num_levels: 2
+  mg_coarse_matrix_size: 500
+  mg_num_paths: 2
+pre_smoother_params:
+  method: Chebyshev
+  polynomial_order: 2
+post_smoother_params:
+  method: Chebyshev
+  polynomial_order: 2
+coarse_grid_solver_params:
+  method: Direct

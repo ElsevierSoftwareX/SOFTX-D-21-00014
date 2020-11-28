@@ -1,0 +1,6 @@
+[submodule "tools/topoexpl"]
+	path = tools/topoexpl
+	url = https://gitlab.com/xamg/topoexpl.git
+[submodule "tools/dbscripts"]
+	path = tools/dbscripts
+	url = https://gitlab.com/xamg/dbscripts.git

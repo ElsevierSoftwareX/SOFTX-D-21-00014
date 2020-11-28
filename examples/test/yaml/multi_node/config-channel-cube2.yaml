@@ -1,0 +1,41 @@
+---
+version: 1
+matrix: generate
+generator_params:
+  case: channel_with_cube
+  scale: 2
+mode: solver
+solver_params:
+  method: PBiCGStab
+  abs_tolerance: 0.0
+  rel_tolerance: 0.0
+  convergence_info: 1
+  max_iters: 20
+preconditioner_params:
+  method: MultiGrid
+  convergence_info: 0
+  max_iters: 1
+  hypre_log: 0
+  hypre_per_level_hierarchy: 1
+  mg_agg_num_levels: 1
+  mg_coarse_matrix_size: 500
+  mg_num_paths: 3
+  mg_coarsening_type: 6
+  mg_interpolation_type: 0
+  mg_trunc_factor: 0.5
+  mg_strength_threshold: 0.1
+  mg_reduced_precision: 0
+preconditioner_override:
+  mg_coarsening_type: 8@lev0-3
+  mg_interpolation_type: 6@lev0-3
+pre_smoother_params:
+  method: HSGS
+  relax_factor: 0.95
+  max_iters: 1
+post_smoother_params:
+  method: HSGS
+  relax_factor: 0.95
+  max_iters: 1
+coarse_grid_solver_params:
+  method: Direct
+graph_reordering: true

@@ -1,0 +1,8 @@
+---
+version: 1
+matrix: generate
+mode: solver
+solver_params: {method: PBiCGStab, max_iters: 5}
+preconditioner_params: {make_progress: 0, method: MultiGrid, max_iters: 1}
+coarse_solver_params: {method: Jacobi, max_iters: 5}
+generator_params: {nx: 10, ny: 10, nz: 1}

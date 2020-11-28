@@ -1,0 +1,263 @@
+#############################################################################
+## 
+##  Copyright (C) 2019-2020 Boris Krasnopolsky, Alexey Medvedev
+##  Contact: xamg-test@imec.msu.ru
+## 
+##  This file is part of the XAMG library.
+## 
+##  Commercial License Usage
+##  Licensees holding valid commercial XAMG licenses may use this file in
+##  accordance with the terms of commercial license agreement.
+##  The license terms and conditions are subject to mutual agreement
+##  between Licensee and XAMG library authors signed by both parties
+##  in a written form.
+## 
+##  GNU General Public License Usage
+##  Alternatively, this file may be used under the terms of the GNU
+##  General Public License, either version 3 of the License, or (at your
+##  option) any later version. The license is as published by the Free 
+##  Software Foundation and appearing in the file LICENSE.GPL3 included in
+##  the packaging of this file. Please review the following information to
+##  ensure the GNU General Public License requirements will be met:
+##  https://www.gnu.org/licenses/gpl-3.0.html.
+## 
+#############################################################################
+
+# Main Makefile
+
+# Usage example: make clean all BUILD=Release XAMG_USER_FLAGS="-DXAMG_NV=2"
+#
+# Additional possible settings:
+# XAMG_CFLAGS, XAMG_FCFLAGS, XAMG_CXXFLAGS additional flags for C, CXX or Fortran compilers
+# WITH_SEPARATE_OBJECTS=TRUE|FALSE (default is: FALSE) 
+# WITH_LIMITED_TYPES_USAGE=TRUE|FALSE (default is: TRUE)
+# WITH_GCOV=TRUE|FALSE (default is: FALSE) NOT IMPLEMENTED YET!
+# WITH_GPROF=TRUE|FALSE (default is: FALSE)
+# WITH_CUDA=TRUE|FALSE (default is: FALSE) NOT IMPLEMENTED YET!
+# WITH_CUDA_PROFILE=TRUE|FALSE (default is: FALSE) NOT IMPLEMENTED YET!
+# WITH_ITAC=TRUE|FALSE (default is: FALSE)
+#
+# CONFIG=config-file-name.inc  (default is: <username>-<hostname>.inc placed either in current dir or Make.inc/) 
+# MACHINEID=<machineid>   (default is: <empty>. By default, it is supposed to be set in config-file-name.inc. 
+#     Can be set up as GENERIC to pick up generic compiler options. MACHINEID given in command line
+#     overrides config setting)
+#     NOTE: the "machineid" string is just a suffix for a variables group in compilerflags.inc. One can introduce 
+#     any new machineid by adding a new group in compilerflags.inc.
+# CXX=<compiler> (default: supposed to be set in config-file-name.inc, otherwise is replaced with 'c++') 
+# CC=<compiler> (default: supposed to be set in config-file-name.inc, otherwise is replaced with 'cc') 
+# FC=<compiler> (default: supposed to be set in config-file-name.inc, otherwise is replaced with 'f95') 
+# MPICXX=<compiler> (default: supposed to be set in config-file-name.inc, otherwise is replaced with 'mpicxx') 
+# MPICC=<compiler> (default: supposed to be set in config-file-name.inc, otherwise is replaced with 'mpicc') 
+# MPIFORT=<compiler> (default: supposed to be set in config-file-name.inc, otherwise is replaced with 'mpifort') 
+# NV_CXX=<compiler> (default: supposed to be set in config-file-name.inc, otherwise is replaced with 'nvcc') 
+
+BASEPATH ?= ../..
+HOSTNAME := $(shell hostname)
+USERNAME := $(shell echo $$USER)
+CONFIG ?= $(USERNAME)-$(HOSTNAME)
+
+SHELL=bash
+
+WITH_CUDA ?= FALSE
+WITH_SEPARATE_OBJECTS ?= FALSE
+WITH_LIMITED_TYPES_USAGE ?= TRUE
+WITH_GCOV  ?= FALSE 
+# WITH_GCOV: CXXFLAGS_COMMON += -fprofile-arcs -ftest-coverage
+WITH_GPROF ?= FALSE
+WITH_CUDA_PROFILE ?= FALSE
+# WITH_CUDA_PROFILE: LIBS += -lnvToolsExt
+WITH_ITAC ?= FALSE
+
+BUILD ?= Debug
+#BUILD = Release
+
+
+###########################################################
+# Configure compilers, check their versions, get right CXXFLAGS, CFLAGS etc.
+# for a selected config
+#
+include $(BASEPATH)/Make.inc/compilerconfig.inc
+
+#################################################################################
+# Main default target
+#
+ifeq ($(FATAL_ERROR),TRUE)
+$(error FATAL ERROR)
+all:
+else
+all: $(TARGETS)
+endif
+
+
+##################################################################################
+# Compiler and linker flags: Debug/Release selection
+#
+ifeq ($(BUILD),Release)
+CFLAGS += $(CFLAGS_RELEASE)
+FCFLAGS += $(FCFLAGS_RELEASE)
+CXXFLAGS += $(CXXFLAGS_RELEASE)
+endif
+ifeq ($(BUILD),Debug)
+CFLAGS += $(CFLAGS_DEBUG)
+FCFLAGS += $(FCFLAGS_DEBUG)
+CXXFLAGS += $(CXXFLAGS_DEBUG)
+endif
+
+CFLAGS += $(CFLAGS_COMMON) $(XAMG_CFLAGS) $(XAMG_USER_FLAGS)
+FCFLAGS += $(FCFLAGS_COMMON) $(XAMG_FCFLAGS) $(XAMG_USER_FLAGS)
+CXXFLAGS += $(CXXFLAGS_COMMON) $(XAMG_CXXFLAGS) $(XAMG_USER_FLAGS)
+
+ifeq ($(WITH_CUDA),TRUE)
+ifeq ($(BUILD),Release)	
+NV_CXXFLAGS += -O3
+endif
+ifeq ($(BUILD),Debug)
+NV_CXXFLAGS += $(CXXFLAGS_DEBUG)	
+endif
+NV_CXXFLAGS += $(XAMG_CXXFLAGS) $(XAMG_USER_FLAGS)
+NV_CXXFLAGS += $(addprefix -Xcompiler ,$(CXXFLAGS_COMMON))
+endif
+
+
+##################################################################################
+# Some include and linker paths and flags
+#
+HYPRE_INC_PATH = -I$(HYPRE_INSTALL_PATH)/include
+HYPRE_LIBS = -L$(HYPRE_INSTALL_PATH)/lib -lHYPRE -Wl,-rpath=$(HYPRE_INSTALL_PATH)/lib
+
+ARGSPARSER_PARAMS_INC_PATH = -I$(ARGSPARSER_INSTALL_PATH)
+
+INCLUDES = -I$(BASEPATH)/src/ $(HYPRE_INC_PATH) $(ARGSPARSER_PARAMS_INC_PATH)
+LIBS = $(HYPRE_LIBS)
+LIBS += -lrt
+
+ifeq ($(BUILD),Debug)
+LIBS += -ldl
+LDFLAGS += -rdynamic
+endif
+
+ifeq ($(WITH_ITAC), TRUE)
+LIBS += -L$(VT_LIB_DIR) -lVT $(VT_ADD_LIBS)
+INCLUDES += -I$(VT_ROOT)/include
+endif
+
+ifeq ($(WITH_GPROF), TRUE)
+CFLAGS += $(PROFILER_FLAGS)
+CXXFLAGS += $(PROFILER_FLAGS)
+LDFLAGS += $(PROFILER_FLAGS)
+endif
+
+##################################################################################
+# Some CUDA specific flags and options
+#
+ifeq ($(WITH_CUDA),TRUE)
+NVCC_PATH = $(shell echo "`which $(NV_CXX)`")
+CUDA_HOME = $(shell echo "`dirname $(NVCC_PATH)`/..")
+CUDA_LIBS = -L$(CUDA_HOME)/lib64 -Wl,--auxiliary=libcudart.so
+CXXFLAGS += -DWITH_CUDA
+NV_CXXFLAGS += -DWITH_CUDA -DXAMG_SEPARATE_OBJECT
+ifeq ($(WITH_SEPARATE_OBJECTS),FALSE)
+$(error WITH_CUDA=TRUE option implies WITH_SEPARATE_OBJECTS=TRUE)
+endif
+endif
+
+
+##################################################################################
+# Limited types usage option
+#
+ifeq ($(WITH_LIMITED_TYPES_USAGE),TRUE)
+CXXFLAGS += -DXAMG_LIMIT_TYPES_USAGE
+NV_CXXFLAGS += -DXAMG_LIMIT_TYPES_USAGE
+endif
+
+
+##########################################################################
+# Common rules for separate objects
+#
+ifneq ($(WITH_SEPARATE_OBJECTS),TRUE)
+# NOTE: in case of monolitic compilation (no separate objects) the whole application is build with MPI compiler
+override CC=$(MPICC)
+override FC=$(MPIFC)
+override CXX=$(MPICXX)
+endif
+
+ifeq ($(WITH_SEPARATE_OBJECTS),TRUE)
+XAMG_SEP_LIB = libxamgsep.so
+CXXFLAGS += -DXAMG_WITH_SEPARATE_OBJECTS
+NV_CXXFLAGS += -DXAMG_WITH_SEPARATE_OBJECTS
+XAMG_LIBS = -L. -Wl,-rpath=. -lxamgsep
+LIBS += $(XAMG_LIBS)
+
+define add_separate_object =
+  enumerate_all_separate_objects: $(1)!
+  .PHONY: $(1)!
+endef
+
+enumerate_all_separate_objects:
+	$(eval XAMG_SEPARATE_OBJECTS=$(subst !,,$^))
+
+$(XAMG_SEP_LIB): enumerate_all_separate_objects
+	make $(XAMG_SEPARATE_OBJECTS)
+	$(MPICXX) -shared -o $(XAMG_SEP_LIB) $(XAMG_SEPARATE_OBJECTS) $(CUDA_LIBS)
+
+
+##########################################################################
+# Separate objects
+#
+
+##############################
+# Separate object: MPI wrapper
+mpi_wrapper.o: $(BASEPATH)/src/comm/mpi_wrapper.cpp
+	$(MPICXX) $(CXXFLAGS) $(INCLUDES) -DXAMG_SEPARATE_OBJECT -c $< -o $@
+
+$(eval $(call add_separate_object, mpi_wrapper.o))
+
+
+##############################
+# Separate object: Hypre wrapper
+hypre_wrapper.o: $(BASEPATH)/src/hypre/hypre_wrapper.cpp
+	$(MPICXX) $(CXXFLAGS) $(INCLUDES) $(HYPRE_INC_PATH) -DXAMG_SEPARATE_OBJECT -c $< -o $@
+
+$(eval $(call add_separate_object, hypre_wrapper.o))
+
+
+##############################
+# Separate object: CUDA wrapper
+ifeq ($(WITH_CUDA),TRUE)
+#gpu_wrapper.o: $(BASEPATH)/src/sys/gpu_wrapper.cu
+#cudastub.o: $(BASEPATH)/src/sys/cudastub.cu
+#
+#$(eval $(call add_separate_object, gpu_wrapper.o))
+#$(eval $(call add_separate_object, cudastub.o))
+endif	
+
+endif
+
+
+#######################################################################
+# Standard compile rules for any source file
+#
+
+%.o: %.c
+	$(CC) $(CFLAGS) -I$(BASEPATH)/api/c $(INCLUDES) -c $< -o $@
+
+%.o: %.cpp
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
+
+ifeq ($(WITH_CUDA),TRUE)
+%.o: %.cu
+	$(NV_CXX) -ccbin `which $(CXX)` $(NV_CXXFLAGS) $(INCLUDES) -c $< -o $@
+
+%.o: $(BASEPATH)/src/sys/%.cu
+	$(NV_CXX) -ccbin `which $(CXX)` $(NV_CXXFLAGS) $(INCLUDES) -c $< -o $@
+endif
+
+
+########################################################################
+# Library clean rule
+#
+ifeq ($(WITH_SEPARATE_OBJECTS),TRUE)
+# NOTE: always use '::' syntax in a derived makefile
+clean:: enumerate_all_separate_objects
+	rm -f $(XAMG_SEP_LIB) $(XAMG_SEPARATE_OBJECTS)
+endif

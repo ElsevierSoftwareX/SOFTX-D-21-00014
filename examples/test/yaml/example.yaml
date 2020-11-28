@@ -1,0 +1,7 @@
+---
+version: 1
+# matrix: generate  # (default)
+# mode: solver  # (default)
+# solver_params: {method: BiCGStab}  # (default)
+# preconditioner_params: {make_progress: 0, max_iters: 1, method: Identity}  # (default)
+# generator_params: {nx: 10, ny: 10, nz: 1}  # (default)
