@@ -319,12 +319,12 @@ void hypre_base::create_hierarchy(const params::global_param_list &global_list) 
     create_multigrid_solver(solver, global_list);
 
     mpi::barrier(mpi::GLOBAL);
-    t1 = io::timer();
+    t1 = sys::timer();
 
     setup_multigrid_solver();
 
     mpi::barrier(mpi::GLOBAL);
-    t2 = io::timer();
+    t2 = sys::timer();
 
     XAMG::out << "AMG setup time = " << t2 - t1 << " sec" << std::endl;
 }

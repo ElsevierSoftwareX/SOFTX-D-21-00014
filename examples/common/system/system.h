@@ -32,25 +32,13 @@ template <typename F>
 void make_system(args_parser &parser, XAMG::matrix::matrix &m, XAMG::vector::vector &x,
                  XAMG::vector::vector &b, const bool graph_reordering = false) {
     auto cmdline_matrix = parser.get<std::string>("matrix");
-    /*
-     *   AVM: Here is the way to override defaults without changing the main code
-     *   So this block can be put inside ifdef block or easily commented out
-     *
-    #if 0
-        if (parser.is_option_defaulted("matrix")) {
-            cmdline_matrix = "/home/beaver/workspace2/xamg/matrix/matrix.csr"
-        }
-    #endif
-    */
-    std::shared_ptr<XAMG::matrix::csr_matrix<F, uint32_t, uint32_t, uint32_t, uint32_t>> sh_mat_csr(
-        new XAMG::matrix::csr_matrix<F, uint32_t, uint32_t, uint32_t, uint32_t>);
-
-    std::shared_ptr<XAMG::vector::vector> sh_x0(new XAMG::vector::vector);
-    std::shared_ptr<XAMG::vector::vector> sh_b0(new XAMG::vector::vector);
+    using matrix_t = XAMG::matrix::csr_matrix<F, uint32_t, uint32_t, uint32_t, uint32_t>;
+    auto sh_mat_csr = std::make_shared<matrix_t>();
+    auto sh_x0 = std::make_shared<XAMG::vector::vector>();
+    auto sh_b0 = std::make_shared<XAMG::vector::vector>();
 
     if (cmdline_matrix != "generate") {
-        XAMG::io::read_system<F, uint32_t, uint32_t, uint32_t, uint32_t, NV>(
-            *sh_mat_csr, *sh_x0, *sh_b0, cmdline_matrix);
+        XAMG::io::read_system<matrix_t, NV>(*sh_mat_csr, *sh_x0, *sh_b0, cmdline_matrix);
     } else {
         std::map<std::string, std::string> cmdline_generator_params;
         parser.get("generator_params", cmdline_generator_params);
@@ -67,20 +55,10 @@ void make_system(args_parser &parser, XAMG::matrix::matrix &m, XAMG::vector::vec
         XAMG::out << "Partitioning completed...\n";
     }
 
-    std::shared_ptr<XAMG::part::part> part = XAMG::part::get_shared_part();
-    part->get_part(sh_mat_csr->nrows);
-    m.set_part(part);
-
-    m.construct(*sh_mat_csr);
-
-    //    m.print_comm_stats();
-
-    x.alloc<F>(m.row_part->numa_layer.block_size[id.nd_numa], NV);
-    b.alloc<F>(m.row_part->numa_layer.block_size[id.nd_numa], NV);
-    x.set_part(part);
-    b.set_part(part);
-    XAMG::blas::copy<F, NV>(*sh_x0, x);
-    XAMG::blas::copy<F, NV>(*sh_b0, b);
+    auto part = XAMG::part::make_partitioner(sh_mat_csr->nrows);
+    XAMG::matrix::construct_distributed<matrix_t>(part, *sh_mat_csr, m);
+    XAMG::vector::construct_distributed<F, NV>(part, *sh_x0, x);
+    XAMG::vector::construct_distributed<F, NV>(part, *sh_b0, b);
 
     //    x.print<float64_t>("X vec");
     //    b.print<float64_t>("B vec");

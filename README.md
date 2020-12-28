@@ -8,10 +8,10 @@ The library contains the implementation of:
 - Jacobi and Gauss-Seidel-like methods;
 - Chebyshev polynomials.
 
-[1] B. Krasnopolsky, Revisiting performance of bicgstab methods for solving systems with multiple right-hand sides // Computers and Mathematics with Applications, 79, p. 2574-2597, 2020. doi:10.1016/j.camwa.2019.11.025 (https://arxiv.org/abs/1907.12874)
+[1] B. Krasnopolsky, Revisiting Performance of BiCGStab Methods for Solving Systems with Multiple Right-Hand Sides, [arXiv:1907.12874](https://arxiv.org/abs/1907.12874), 2019
 
 The following features are implemented in **XAMG** library:
-- reduced precision floating point calculations;
+- mixed precision floating point calculations;
 - dynamic indices compression (for 1 or 2-byte integers);
 - per-level multigrid parameters specification.
 
@@ -70,4 +70,13 @@ make CONFIG=generic CXX=icpc MPICXX=/opt/openmpi-1.5.0/bin/mpicxx
 - `MPICC=<compiler>` (default: supposed to be set in config.inc, otherwise is replaced with `mpicc`)
 - `NV_CXX=<compiler>` (default: supposed to be set in config.inc, otherwise is replaced with `nvcc`)
 
-The code development was supported by Russian Scientific Fund (RSF) Grant No. 18-71-10075.
+## Documentation
+
+[Comprehensive build documentation]: https://gitlab.com/xamg/xamg/-/wikis/docs/XAMG_build_guideline
+
+[List of numerical methods' parameters]: https://gitlab.com/xamg/xamg/-/wikis/docs/XAMG_params_reference
+
+
+## Acknowledgements
+
+The code development was supported by the Russian Science Foundation (RSF) Grant No. 18-71-10075.

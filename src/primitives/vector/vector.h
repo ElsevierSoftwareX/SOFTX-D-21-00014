@@ -285,15 +285,23 @@ struct vector {
 
             size = vec_b.buffer_size[active_numa_block];
         } else if (sharing_mode == mem::NODE) {
-            vec_b.bufs = new void *[1];
-            vec_b.ptrs = new T *[1];
-            vec_b.buffer_size = new uint64_t[1];
+            vec_b.bufs = new void *[id.nd_nnumas];
+            vec_b.ptrs = new T *[id.nd_nnumas];
+            vec_b.buffer_size = new uint64_t[id.nd_nnumas];
 
             active_numa_block = 0;
             vec_b.buffer_size[active_numa_block] = block_size;
             vec_b.bufs[active_numa_block] = mem::alloc_buffer(
                 vec_b.buffer_size[active_numa_block] * nv * sizeof(T), sharing_mode, 0);
             vec_b.ptrs[active_numa_block] = (T *)(mem::get_aligned(vec_b.bufs[active_numa_block]));
+
+            // XAMG::out << XAMG::ALLRANKS << "NODE-Shared block size: " << block_size << " " << block_size * nv * sizeof(T) << std::endl;
+            if (id.nd_numa) {
+                vec_b.buffer_size[id.nd_numa] = block_size;
+                vec_b.bufs[id.nd_numa] = mem::alloc_buffer(
+                    vec_b.buffer_size[id.nd_numa] * nv * sizeof(T), mem::NUMA, id.nd_numa);
+                vec_b.ptrs[id.nd_numa] = (T *)(mem::get_aligned(vec_b.bufs[id.nd_numa]));
+            }
 
             size = vec_b.buffer_size[active_numa_block];
         } else if (sharing_mode == mem::NUMA_NODE) {
@@ -668,6 +676,28 @@ struct vector {
                       << std::endl;
         assert((sum_flag == 0) || (sum_flag == (uint32_t)id.gl_nprocs));
 #endif
+    }
+
+    template <typename T>
+    void replicate_buffer() {
+        assert(sharing_mode == mem::NODE);
+        if (id.nd_numa) {
+            const auto nm0_ptr = get_aligned_ptr<T>(0);
+            auto nm_ptr = get_aligned_ptr<T>(id.nd_numa);
+            uint32_t vec_size = size * nv;
+
+            if (vec_size > 10000) {
+                uint32_t local_size = vec_size / id.nm_ncores;
+                uint32_t local_off = local_size * id.nm_core;
+                local_size = std::min(local_size, (uint32_t)(vec_size - local_off));
+
+                memcpy(nm_ptr + local_off, nm0_ptr + local_off, local_size * sizeof(T));
+            } else {
+                if (id.numa_master_process()) {
+                    memcpy(nm_ptr, nm0_ptr, vec_size * sizeof(T));
+                }
+            }
+        }
     }
 };
 

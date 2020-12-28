@@ -58,7 +58,10 @@ void csr_Axpy(const matrix::csr_matrix<F, I1, I2, I3, I4> &m, const vector::vect
     const F *XAMG_RESTRICT val_ptr = m.val.template get_aligned_ptr<F>();
 
     const F *XAMG_RESTRICT x_ptr = x.get_aligned_ptr<F>();
-    F *XAMG_RESTRICT y_ptr = y.get_aligned_ptr<F>();
+    int numa_block = -1;
+    if (y.sharing_mode == mem::NODE)
+        numa_block = id.nd_numa;
+    F *XAMG_RESTRICT y_ptr = y.get_aligned_ptr<F>(numa_block);
 
     uint64_t core_size, core_offset;
     uint64_t m_offset = 0;
@@ -172,7 +175,10 @@ void csr_Ax_y(const matrix::csr_matrix<F, I1, I2, I3, I4> &m, const vector::vect
     const F *XAMG_RESTRICT val_ptr = m.val.template get_aligned_ptr<F>();
 
     const F *XAMG_RESTRICT x_ptr = x.get_aligned_ptr<F>();
-    F *XAMG_RESTRICT y_ptr = y.get_aligned_ptr<F>();
+    int numa_block = -1;
+    if (y.sharing_mode == mem::NODE)
+        numa_block = id.nd_numa;
+    F *XAMG_RESTRICT y_ptr = y.get_aligned_ptr<F>(numa_block);
 
     assert(y.sharing_mode == mem::NUMA_NODE);
     uint64_t core_size, core_offset;

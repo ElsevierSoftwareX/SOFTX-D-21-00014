@@ -56,16 +56,16 @@ void Jacobi<F, NV>::solve(const vector::vector &conv, XAMG::mpi::token &tok) {
     uint16_t conv_info;
     uint16_t conv_check;
     float32_t relax_factor_f32;
-    monitor.params.start();
+    monitor.start("params");
     param_list.get_value("convergence_check", conv_check);
     param_list.get_value("max_iters", max_iters);
     param_list.get_value("convergence_info", conv_info);
     param_list.get_value("relax_factor", relax_factor_f32);
-    monitor.params.stop();
+    monitor.stop("params");
     stats.reset(conv_check);
     auto &it = stats.iters;
 
-    monitor.alloc.start();
+    monitor.start("alloc");
     // inverted convergence flag; used to switch off updates to converged RHSs
     vector::vector iconv(conv);
 
@@ -80,7 +80,7 @@ void Jacobi<F, NV>::solve(const vector::vector &conv, XAMG::mpi::token &tok) {
     vector::vector relax_conv;
     relax_conv.alloc<F>(1, NV);
     blas::set_const<F, NV>(relax_conv, (F)relax_factor_f32);
-    monitor.alloc.stop();
+    monitor.stop("alloc");
 
     for (auto &buf : buffer)
         blas::set_const<F, NV>(buf, 0.0);

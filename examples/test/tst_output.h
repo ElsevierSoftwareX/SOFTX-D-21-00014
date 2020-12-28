@@ -29,7 +29,7 @@
 #include <string>
 #include "yaml-cpp/yaml.h"
 
-struct ex_store_output {
+struct tst_store_output {
     YAML::Emitter out;
     std::map<std::string, YAML::Node> nodes;
     void init() {
@@ -45,8 +45,6 @@ struct ex_store_output {
     template <typename T>
     void store_xamg_vector(const std::string &block, const std::string &key,
                            const XAMG::vector::vector &vec, int i = 0) {
-        //        std::vector<T> vec_stdv;
-        //        vec.get_value_nv(i, vec_stdv);
         std::vector<T> vec_stdv = vec.get_element<T>(i);
         YAML::Node &n = nodes[block];
         n[key] = vec_stdv;
@@ -58,8 +56,6 @@ struct ex_store_output {
         XAMG::vector::vector res(XAMG::mem::LOCAL);
         res.alloc<T>(1, NV);
         XAMG::blas::dot_global<T, NV>(vec, vec, res);
-        //        std::vector<T> res_stdv;
-        //        res.get_value_nv(0, res_stdv);
         std::vector<T> res_stdv = vec.get_element<T>(0);
         std::transform(res_stdv.begin(), res_stdv.end(), res_stdv.begin(),
                        [](float64_t x) { return sqrt(x); });
@@ -68,6 +64,8 @@ struct ex_store_output {
         n[key].SetStyle(YAML::EmitterStyle::Flow);
     }
     void dump(const std::string &output_filename) {
+        if (output_filename == "")
+            return;
         std::ofstream ofs(output_filename);
         dump(ofs);
         ofs.close();
@@ -77,7 +75,6 @@ struct ex_store_output {
             out << YAML::Flow << YAML::Key << n.first << YAML::Value << n.second;
         }
         out << YAML::Newline;
-
         ofs << std::string(out.c_str());
     }
 };

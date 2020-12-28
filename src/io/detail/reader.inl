@@ -44,8 +44,8 @@ bool read_vector(vector::vector &vec, const uint64_t offset, FILE *file) {
     }
 }
 
-template <typename F, typename I1, typename I2, typename I3, typename I4>
-bool read_matrix(matrix::csr_matrix<F, I1, I2, I3, I4> &mat, FILE *file) {
+template <class MATRIX_TYPE, typename FP, typename ROW_IDX_TYPE, typename COL_IDX_TYPE>
+bool read_matrix(MATRIX_TYPE &mat, FILE *file) {
 
     uint32_t i32_nrows, i32_nonzeros;
 
@@ -88,53 +88,58 @@ bool read_matrix(matrix::csr_matrix<F, I1, I2, I3, I4> &mat, FILE *file) {
 
     /////////
 
-    if (!mat.if_empty) {
-        uint64_t row_offset = mat.block_row_offset;
-        file_offset = 2 * sizeof(uint32_t);
-        fseek(file, file_offset, SEEK_SET);
+    if (mat.if_empty)
+        return true;
+    uint64_t row_offset = mat.block_row_offset;
+    file_offset = 2 * sizeof(uint32_t);
+    fseek(file, file_offset, SEEK_SET);
 
-        if (!read_vector<I1>(mat.row, row_offset, file))
-            return false;
-        file_offset += (i32_nrows + 1) * sizeof(uint32_t);
+    if (!read_vector<ROW_IDX_TYPE>(mat.row, row_offset, file))
+        return false;
+    file_offset += (i32_nrows + 1) * sizeof(uint32_t);
 
-        mat.row.check(vector::vector::initialized);
-        auto row_ptr = mat.row.template get_aligned_ptr<I1>();
-        uint64_t nnz_offset = row_ptr[0];
+    mat.row.check(vector::vector::initialized);
+    auto row_ptr = mat.row.template get_aligned_ptr<ROW_IDX_TYPE>();
+    uint64_t nnz_offset = row_ptr[0];
 
-        fseek(file, file_offset, SEEK_SET);
-        if (!read_vector<I2>(mat.col, nnz_offset, file))
-            return false;
-        file_offset += i32_nonzeros * sizeof(uint32_t);
+    fseek(file, file_offset, SEEK_SET);
+    if (!read_vector<COL_IDX_TYPE>(mat.col, nnz_offset, file))
+        return false;
+    file_offset += i32_nonzeros * sizeof(uint32_t);
 
-        fseek(file, file_offset, SEEK_SET);
-        if (!read_vector<F>(mat.val, nnz_offset, file))
-            return false;
-        file_offset += i32_nonzeros * sizeof(float64_t);
+    fseek(file, file_offset, SEEK_SET);
+    if (!read_vector<FP>(mat.val, nnz_offset, file))
+        return false;
+    file_offset += i32_nonzeros * sizeof(float64_t);
 
-        fseek(file, file_offset, SEEK_SET);
+    fseek(file, file_offset, SEEK_SET);
 
-        /////////
+    /////////
 
-        for (uint64_t i = 0; i < mat.row.size; ++i)
-            row_ptr[i] -= nnz_offset;
-    }
+    for (uint64_t i = 0; i < mat.row.size; ++i)
+        row_ptr[i] -= nnz_offset;
 
     return true;
 }
 
-template <typename F, typename I1, typename I2, typename I3, typename I4, uint16_t NV>
-bool read_system(matrix::csr_matrix<F, I1, I2, I3, I4> &mat, vector::vector &x, vector::vector &b,
-                 const std::string &path) {
+template <class MATRIX_TYPE, uint16_t NV>
+bool read_system(MATRIX_TYPE &mat, vector::vector &x, vector::vector &b, const std::string &path) {
+    using FP = typename MATRIX_TYPE::float_type;
+    using ROW_IDX_TYPE = typename MATRIX_TYPE::row_idx_type;
+    using COL_IDX_TYPE = typename MATRIX_TYPE::col_idx_type;
+
 #ifdef XAMG_DBG_HEADER
-    XAMG::out << FUNC_PREFIX << "CSR read data, fp: <" << DEMANGLE_TYPEID_NAME(F) << ">; I1: <"
-              << DEMANGLE_TYPEID_NAME(I1) << ">; I2: <" << DEMANGLE_TYPEID_NAME(I2) << ">\n";
+    XAMG::out << FUNC_PREFIX << "CSR read data, fp: <" << DEMANGLE_TYPEID_NAME(FP) << ">; I1: <"
+              << DEMANGLE_TYPEID_NAME(ROW_IDX_TYPE) << ">; I2: <"
+              << DEMANGLE_TYPEID_NAME(COL_IDX_TYPE) << ">\n";
 #endif
+
     //  parallel data reader
 
     FILE *file = fopen(path.c_str(), "rb");
     assert(file != NULL);
 
-    bool flag = read_matrix(mat, file);
+    bool flag = read_matrix<MATRIX_TYPE, FP, ROW_IDX_TYPE, COL_IDX_TYPE>(mat, file);
     assert(flag);
 
     //////////
@@ -142,24 +147,24 @@ bool read_system(matrix::csr_matrix<F, I1, I2, I3, I4> &mat, vector::vector &x, 
     uint32_t i32_nrows = mat.ncols;
     uint64_t row_offset = mat.block_row_offset * NV;
 
-    x.alloc<F>(mat.nrows, NV);
-    b.alloc<F>(mat.nrows, NV);
+    x.alloc<FP>(mat.nrows, NV);
+    b.alloc<FP>(mat.nrows, NV);
 
-    if (!read_vector<F>(b, row_offset, file)) {
+    if (read_vector<FP>(b, row_offset, file)) {
         XAMG::out << "B vector read completed...\n";
 
         uint64_t file_offset = (i32_nrows * NV - row_offset - b.size * NV) * sizeof(float64_t);
         fseek(file, file_offset, SEEK_SET);
 
-        if (!read_vector<F>(x, row_offset, file)) {
+        if (read_vector<FP>(x, row_offset, file)) {
             XAMG::out << "X vector read completed...\n";
         } else {
             XAMG::out << "X vector read failed...\n";
-            blas::set_const<F, NV>(x, 0.0, true);
+            blas::set_const<FP, NV>(x, 0.0, true);
         }
     } else {
         XAMG::out << "B vector read failed...\n";
-        blas::set_const<F, NV>(b, 1.0, true);
+        blas::set_const<FP, NV>(b, 1.0, true);
     }
 
     fclose(file);

@@ -62,11 +62,11 @@ void Chebyshev_polynomial_coeffs(std::vector<vector::vector> &cheby_coeffs,
 
     ///////////////////
 
-    monitor.alloc.start();
+    monitor.start("alloc");
     cheby_coeffs.resize(poly_order, vector::vector());
     for (auto &cheby_coeff : cheby_coeffs)
         cheby_coeff.alloc<F>(1, NV);
-    monitor.alloc.stop();
+    monitor.stop("alloc");
 
     switch (poly_order) {
     case 1: {
@@ -138,12 +138,12 @@ void Chebyshev<F, NV>::solve(const vector::vector &conv, XAMG::mpi::token &tok) 
     uint16_t poly_order;
     float32_t spec_fraction;
 
-    monitor.params.start();
+    monitor.start("params");
     param_list.get_value("convergence_check", conv_check);
     param_list.get_value("convergence_info", conv_info);
     param_list.get_value("polynomial_order", poly_order);
     param_list.get_value("spectrum_fraction", spec_fraction);
-    monitor.params.stop();
+    monitor.stop("params");
     stats.reset(conv_check);
     auto &it = stats.iters;
 
@@ -155,11 +155,11 @@ void Chebyshev<F, NV>::solve(const vector::vector &conv, XAMG::mpi::token &tok) 
 
     const vector::vector &inv_sqrt_diag = A.inv_sqrt_diag();
 
-    monitor.alloc.start();
+    monitor.start("alloc");
     vector::vector rho0, res;
     rho0.alloc<F>(1, NV);
     res.alloc<F>(1, NV);
-    monitor.alloc.stop();
+    monitor.stop("alloc");
 
     for (auto &buf : buffer)
         blas::set_const<F, NV>(buf, 0.0);

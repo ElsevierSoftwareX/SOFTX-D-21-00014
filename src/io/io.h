@@ -76,17 +76,6 @@ static inline void sync(mpi::scope comm = mpi::GLOBAL) {
 
 /////////
 
-static inline double timer() {
-    struct timeval tp;
-    struct timezone tzp;
-    // int i;
-
-    /*i = */ gettimeofday(&tp, &tzp);
-    return ((double)tp.tv_sec + (double)tp.tv_usec * 1.e-6);
-}
-
-/////////
-
 template <typename F, typename I1, typename I2, typename I3, typename I4, uint16_t NV>
 bool read_system(matrix::csr_matrix<F, I1, I2, I3, I4> &mat, vector::vector &x, vector::vector &b,
                  const std::string &path);

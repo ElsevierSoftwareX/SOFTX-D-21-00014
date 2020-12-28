@@ -35,6 +35,8 @@
 
 #include "blas/blas.h"
 
+#include "bit_operations.h"
+
 #include "comm/data_exchange.h"
 
 /////////
@@ -44,6 +46,9 @@ namespace matrix {
 
 template <typename F, typename I1, typename I2, typename I3, typename I4>
 struct csr_matrix : backend {
+    typedef F float_type;
+    typedef I1 row_idx_type;
+    typedef I2 col_idx_type;
     mem::sharing sharing_mode;
 
     vector::vector row;

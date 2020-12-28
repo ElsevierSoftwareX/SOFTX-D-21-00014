@@ -49,15 +49,15 @@ void PBiCGStab<F, NV>::solve(const vector::vector &conv, XAMG::mpi::token &tok) 
     uint16_t conv_check;
     uint16_t max_iters;
     uint16_t conv_info;
-    monitor.params.start();
+    monitor.start("params");
     param_list.get_value("convergence_check", conv_check);
     param_list.get_value("max_iters", max_iters);
     param_list.get_value("convergence_info", conv_info);
-    monitor.params.stop();
+    monitor.stop("params");
     stats.reset(conv_check);
     auto &it = stats.iters;
 
-    monitor.alloc.start();
+    monitor.start("alloc");
     // inverted convergence flag; used to switch off updates to converged RHSs
     vector::vector iconv(conv);
 
@@ -84,7 +84,7 @@ void PBiCGStab<F, NV>::solve(const vector::vector &conv, XAMG::mpi::token &tok) 
     vector::vector alpha_conv, omega_conv;
     alpha_conv.alloc<F>(1, NV);
     omega_conv.alloc<F>(1, NV);
-    monitor.alloc.stop();
+    monitor.stop("alloc");
 
     for (auto &buf : buffer)
         blas::set_const<F, NV>(buf, 0.0);

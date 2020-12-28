@@ -23,71 +23,55 @@
 ** 
 ****************************************************************************/
 
-#include <xamg_headers.h>
-#include <xamg_types.h>
-
-#include <init.h>
-
-#include <primitives/vector/vector.h>
-#include <primitives/matrix/matrix.h>
-
-#include <blas/blas.h>
-#include <blas2/blas2.h>
-#include <solvers/solver.h>
-#include <io/io.h>
-#include <part/part.h>
-#include <param/params.h>
+#include <xamg/xamg_headers.h>
+#include <xamg/xamg_types.h>
+#include <xamg/init.h>
+#include <xamg/blas/blas.h>
+#include <xamg/blas2/blas2.h>
+#include <xamg/solvers/solver.h>
 
 #include "../common/generator/generator.h"
 
-#ifndef XAMG_NV
-#define XAMG_NV 16
-#endif
-
-const uint16_t NV = XAMG_NV;
-
 int main(int argc, char *argv[]) {
+    using FP = double;
+    using INT = uint32_t;
+    using matrix_t = XAMG::matrix::csr_matrix<FP, INT, INT, INT, INT>;
+    constexpr uint16_t NV = 8;
 
-    // XAMG::init(argc, argv/*, "ncores=64;nnumas=2;ngpus=2", "xamg.log"*/);
-    // XAMG::init(argc, argv/*, "0xffffffff@0;0xffffffff@1", "xamg.log"*/);
-    XAMG::init(argc, argv /*, "", "xamg.log"*/);
+    XAMG::init(argc, argv, "nnumas=1:ncores=1");
 
-    std::string method = "BiCGStab";
-    XAMG::params::global_param_list params;
-    params.add("solver", {"method", method});
-    params.set_defaults();
+    XAMG::matrix::csr_matrix<FP, INT, INT, INT, INT> csr_file_mtx;
+    XAMG::vector::vector csr_file_x, csr_file_b;
+
+    generator_params_t p;
+    p.nx = p.ny = p.nz = 70;
+    generate_system<FP, INT, INT, INT, INT, NV>(csr_file_mtx, csr_file_x, csr_file_b, p);
 
     XAMG::matrix::matrix m(XAMG::mem::DISTRIBUTED);
     XAMG::vector::vector x(XAMG::mem::DISTRIBUTED), b(XAMG::mem::DISTRIBUTED);
-    XAMG::vector::vector x0(XAMG::mem::LOCAL), b0(XAMG::mem::LOCAL);
+    auto part = XAMG::part::make_partitioner(csr_file_mtx.nrows);
+    XAMG::matrix::construct_distributed<matrix_t>(part, csr_file_mtx, m);
+    XAMG::vector::construct_distributed<FP, NV>(part, csr_file_x, x);
+    XAMG::vector::construct_distributed<FP, NV>(part, csr_file_b, b);
 
-    XAMG::matrix::csr_matrix<float64_t, uint32_t, uint32_t, uint32_t, uint32_t> mat_csr;
-    generate_system<float64_t, uint32_t, uint32_t, uint32_t, uint32_t, NV>(mat_csr, x0, b0, 10, 10,
-                                                                           10);
+    XAMG::params::global_param_list params;
+    params.add("solver", {"method", "PBiCGStab"});
+    params.add_map("solver", {{"max_iters", "20"}});
+    params.add_map("preconditioner", {{"method", "MultiGrid"},
+                                      {"max_iters", "1"},
+                                      {"mg_agg_num_levels", "2"},
+                                      {"mg_coarse_matrix_size", "500"},
+                                      {"mg_num_paths", "2"}});
+    params.add_map("pre_smoother", {{"method", "Chebyshev"}, {"polynomial_order", "2"}});
+    params.add_map("post_smoother", {{"method", "Chebyshev"}, {"polynomial_order", "2"}});
+    params.set_defaults();
 
-    std::shared_ptr<XAMG::part::part> part = XAMG::part::get_shared_part();
-    part->get_part(mat_csr.nrows);
-    m.set_part(part);
+    auto solver = XAMG::solver::construct_solver_hierarchy<FP, NV>(params, m, x, b);
 
-    m.construct(mat_csr);
+    solver->solve();
+    for (auto &x : solver->stats.abs_res)
+        std::cout << ">> " << x << std::endl;
 
-    x.alloc<float64_t>(m.row_part->numa_layer.block_size[id.nd_numa], NV);
-    b.alloc<float64_t>(m.row_part->numa_layer.block_size[id.nd_numa], NV);
-    x.set_part(part);
-    b.set_part(part);
-    XAMG::blas::copy<float64_t, NV>(x0, x);
-    XAMG::blas::copy<float64_t, NV>(b0, b);
-
-    auto sol = XAMG::solver::construct_solver_hierarchy<float64_t, NV>(params, m, x, b);
-
-    XAMG::mpi::barrier();
-    double t1 = XAMG::io::timer();
-
-    sol->solve();
-
-    XAMG::mpi::barrier();
-    double t2 = XAMG::io::timer();
-
-    XAMG::out << "Time: " << t2 - t1 << std::endl;
     XAMG::finalize();
+    return 0;
 }

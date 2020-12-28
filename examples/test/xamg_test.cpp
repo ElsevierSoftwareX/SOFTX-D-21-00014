@@ -29,25 +29,17 @@
 #include <regex>
 #include <argsparser.h>
 
-#include <xamg_headers.h>
-#include <xamg_types.h>
+#include <xamg/xamg_headers.h>
+#include <xamg/xamg_types.h>
 
-#include <init.h>
+#include <xamg/init.h>
 
-#include <primitives/vector/vector.h>
-#include <primitives/matrix/matrix.h>
-
-#include <blas/blas.h>
-#include <blas2/blas2.h>
-#include <solvers/solver.h>
-
-#include <io/io.h>
-#include <part/part.h>
-
-#include <param/params.h>
+#include <xamg/blas/blas.h>
+#include <xamg/blas2/blas2.h>
+#include <xamg/solvers/solver.h>
 
 #ifdef XAMG_DEBUG
-#include <sys/dbg_helper.h>
+#include <xamg/sys/dbg_helper.h>
 #endif
 
 #include "cmdline.h"
@@ -74,20 +66,20 @@ extern XAMG::perf_info perf;
 
 const uint16_t NV = XAMG_NV;
 
-#include "ex_output.h"
-ex_store_output ex_output;
+#include "tst_output.h"
+tst_store_output tst_output;
 
 #include "../common/system/system.h"
-#include "ex_blas.h"
-#include "ex_spmv.h"
-#include "ex_solver.h"
-#include "ex_hypre.h"
+#include "tst_blas.h"
+#include "tst_spmv.h"
+#include "tst_solver.h"
+#include "tst_hypre.h"
 
 int main(int argc, char *argv[]) {
     std::vector<std::string> solver_types = {"solver", "preconditioner", "pre_smoother",
                                              "post_smoother", "coarse_grid_solver"};
     args_parser parser(argc, argv, "-", ' ');
-//    parser.add<std::string>("result").set_caption("The file to store computation results in");
+    parser.add<std::string>("result", "").set_caption("The file to store computation results in");
 #ifdef XAMG_DEBUG
     dbg_helper dbg;
     dbg.add_options_to_parser(parser);
@@ -104,7 +96,7 @@ int main(int argc, char *argv[]) {
         return 0;
     }
     sleep(parser.get<int>("sleep"));
-    //    auto result_filename = parser.get<std::string>("result");
+    auto result_filename = parser.get<std::string>("result");
     params.set_defaults();
 #ifdef XAMG_DEBUG
     dbg.get_options_from_parser(argv[0]);
@@ -128,21 +120,21 @@ int main(int argc, char *argv[]) {
         //        XAMG::out.norm<FP_TYPE, NV>(x, "x0");
         //        XAMG::out.norm<FP_TYPE, NV>(b, "b0");
     }
-    ex_output.init();
+    tst_output.init();
     if (execution_mode == blas_test) { // blas functions
-        ex_blas_test<FP_TYPE>();
+        tst_blas_test<FP_TYPE>();
     }
     if (execution_mode == solver_test) { // solver
-        ex_solver_test<FP_TYPE>(m, x, b, params);
+        tst_solver_test<FP_TYPE>(m, x, b, params);
     }
     if (execution_mode == spmv_test) { // spmv
-        ex_spmv_test<FP_TYPE>(m, b, x);
+        tst_spmv_test<FP_TYPE>(m, b, x);
     }
     if (execution_mode == hypre_test) {
-        ex_hypre_test(m, x, b, params);
+        tst_hypre_test(m, x, b, params);
     }
 
     XAMG::finalize();
-    // if (id.master_process())
-    //     ex_output.dump(result_filename);
+    if (id.master_process())
+        tst_output.dump(result_filename);
 }

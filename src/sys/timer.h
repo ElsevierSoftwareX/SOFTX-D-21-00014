@@ -25,23 +25,20 @@
 
 #pragma once
 
-#include <hypre/hypre_wrapper.h>
+#include "xamg_headers.h"
+#include "xamg_types.h"
 
-void ex_hypre_test(XAMG::matrix::matrix &m, XAMG::vector::vector &x, XAMG::vector::vector &y,
-                   const XAMG::params::global_param_list &params) {
+namespace XAMG {
+namespace sys {
 
-    for (int it = 0; it < 3; ++it) {
-        XAMG::blas::set_const<float64_t, NV>(x, 0, true);
-        XAMG::out.norm<float64_t, NV>(x, " x0 ");
-        XAMG::out.norm<float64_t, NV>(y, " y0 ");
+static inline double timer() {
+    struct timeval tp;
+    struct timezone tzp;
+    // int i;
 
-        if (NV == 1) {
-            XAMG::hypre::solve(m, x, y, params);
-
-            XAMG::out.norm<float64_t, NV>(x, " x ");
-            //            XAMG::XAMG::out.norm<float64_t, NV>(y, " YY ");
-        } else {
-            XAMG::out << XAMG::WARN << "Hypre test mode is allowed for single rhs vector only\n";
-        }
-    }
+    /*i = */ gettimeofday(&tp, &tzp);
+    return ((double)tp.tv_sec + (double)tp.tv_usec * 1.e-6);
 }
+
+} // namespace sys
+} // namespace XAMG

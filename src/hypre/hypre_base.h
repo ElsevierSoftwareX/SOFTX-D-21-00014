@@ -215,7 +215,7 @@ struct hypre_base {
     void setup_bicgstab_solver() {
         double t1, t2;
         mpi::barrier(mpi::GLOBAL);
-        t1 = io::timer();
+        t1 = sys::timer();
 
         if (mg_precond_flag)
             HYPRE_BiCGSTABSetPrecond(solver, (HYPRE_PtrToSolverFcn)HYPRE_BoomerAMGSolve,
@@ -224,13 +224,13 @@ struct hypre_base {
         HYPRE_ParCSRBiCGSTABSetup(solver, parcsr_A, par_b, par_x);
 
         mpi::barrier(mpi::GLOBAL);
-        t2 = io::timer();
+        t2 = sys::timer();
     }
 
     void setup_multigrid_solver() {
         double t1, t2;
         mpi::barrier(mpi::GLOBAL);
-        t1 = io::timer();
+        t1 = sys::timer();
 
         if (mg_precond_flag)
             HYPRE_BoomerAMGSetup(precond, parcsr_A, NULL, NULL);
@@ -238,18 +238,18 @@ struct hypre_base {
             HYPRE_BoomerAMGSetup(solver, parcsr_A, par_b, par_x);
 
         mpi::barrier(mpi::GLOBAL);
-        t2 = io::timer();
+        t2 = sys::timer();
     }
 
     void bicgstab_solver() {
         double t2, t3;
         mpi::barrier(mpi::GLOBAL);
-        t2 = io::timer();
+        t2 = sys::timer();
 
         HYPRE_ParCSRBiCGSTABSolve(solver, parcsr_A, par_b, par_x);
 
         mpi::barrier(mpi::GLOBAL);
-        t3 = io::timer();
+        t3 = sys::timer();
 
         int num_iterations;
         double final_res_norm;
@@ -262,12 +262,12 @@ struct hypre_base {
     void multigrid_solver() {
         double t2, t3;
         mpi::barrier(mpi::GLOBAL);
-        t2 = io::timer();
+        t2 = sys::timer();
 
         HYPRE_BoomerAMGSolve(solver, parcsr_A, par_b, par_x);
 
         mpi::barrier(mpi::GLOBAL);
-        t3 = io::timer();
+        t3 = sys::timer();
 
         int num_iterations;
         double final_res_norm;

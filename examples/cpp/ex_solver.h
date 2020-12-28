@@ -36,12 +36,12 @@ void ex_solver_test(XAMG::matrix::matrix &m, XAMG::vector::vector &x, XAMG::vect
     XAMG::out.norm<F, NV>(y, "y0");
 
     XAMG::mpi::barrier();
-    t1 = XAMG::io::timer();
+    t1 = XAMG::sys::timer();
 
     sol->solve();
 
     XAMG::mpi::barrier();
-    t2 = XAMG::io::timer();
+    t2 = XAMG::sys::timer();
 
     std::string method;
     sol->param_list.get_value("method", method);

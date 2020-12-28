@@ -26,7 +26,8 @@
 #pragma once
 
 template <typename F>
-void ex_spmv_test(XAMG::matrix::matrix &m, const XAMG::vector::vector &x, XAMG::vector::vector &y) {
+void tst_spmv_test(XAMG::matrix::matrix &m, const XAMG::vector::vector &x,
+                   XAMG::vector::vector &y) {
 
     double t1, t2;
     uint32_t iters = 10;
@@ -37,14 +38,14 @@ void ex_spmv_test(XAMG::matrix::matrix &m, const XAMG::vector::vector &x, XAMG::
         XAMG::blas::set_const<F, NV>(y, 0.0, true);
 
         XAMG::mpi::barrier();
-        t1 = XAMG::io::timer();
+        t1 = XAMG::sys::timer();
 
         for (uint32_t i = 0; i < iters; i++) {
             XAMG::blas2::Axpy<F, NV>(m, x, y, NV);
         }
 
         XAMG::mpi::barrier();
-        t2 = XAMG::io::timer();
+        t2 = XAMG::sys::timer();
 
         XAMG::out << XAMG::SUMMARY << "SUMMARY:: "
                   << "SpMV: \tMatrix size: " << m.info.nrows

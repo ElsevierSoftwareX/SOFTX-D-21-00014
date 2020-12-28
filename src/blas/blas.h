@@ -156,6 +156,19 @@ struct ConstVectorsCache {
 };
 
 } // namespace blas
+
+namespace vector {
+
+template <typename F, uint16_t NV>
+void construct_distributed(const std::shared_ptr<XAMG::part::part> part,
+                           const XAMG::vector::vector &local_vec,
+                           XAMG::vector::vector &distributed_vec) {
+    distributed_vec.alloc<F>(part->numa_layer.block_size[id.nd_numa], NV);
+    distributed_vec.set_part(part);
+    XAMG::blas::copy<F, NV>(local_vec, distributed_vec);
+}
+
+} // namespace vector
 } // namespace XAMG
 
 #include "detail/blas.inl"

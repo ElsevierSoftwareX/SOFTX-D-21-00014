@@ -556,7 +556,7 @@ int XAMG_barrier() {
 }
 
 double XAMG_timer() {
-    return XAMG::io::timer();
+    return XAMG::sys::timer();
 }
 
 int XAMG_get_nv() {

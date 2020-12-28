@@ -28,7 +28,7 @@
 #include "part/part.h"
 
 template <typename F>
-void ex_blas_test() {
+void tst_blas_test() {
     double t1, t2;
     uint64_t iters;
 
@@ -72,7 +72,7 @@ void ex_blas_test() {
     // }
 
     XAMG::mpi::barrier();
-    t1 = XAMG::io::timer();
+    t1 = XAMG::sys::timer();
 
     for (uint64_t i = 0; i < 10; i++) {
         XAMG::blas::axpby<F, NV>(a1, x, a2, y);
@@ -81,7 +81,7 @@ void ex_blas_test() {
     }
 
     XAMG::mpi::barrier();
-    t2 = XAMG::io::timer();
+    t2 = XAMG::sys::timer();
 
     // iters = (int)(5.0 / ((t2-t1) / 10.0));
     // MPI_Bcast (&iters, 1, MPI_LONG, 0, MPI_COMM_WORLD);

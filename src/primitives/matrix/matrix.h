@@ -28,8 +28,6 @@
 #include "xamg_headers.h"
 #include "xamg_types.h"
 
-#include "bit_operations.h"
-
 #include "primitives/vector/vector.h"
 
 #include "csr_matrix.h"
@@ -422,6 +420,13 @@ struct mg_layer {
     matrix &get_R() { return R.get(); }
     matrix &get_P() { return P.get(); }
 };
+
+template <typename M>
+void construct_distributed(std::shared_ptr<XAMG::part::part> part, const M &local_mtx,
+                           XAMG::matrix::matrix &distributed_mtx) {
+    distributed_mtx.set_part(part);
+    distributed_mtx.construct(local_mtx);
+}
 
 } // namespace matrix
 } // namespace XAMG

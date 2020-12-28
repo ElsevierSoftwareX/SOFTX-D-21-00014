@@ -28,7 +28,7 @@
 # NOTE: See Makefile usage info in Makefile.base header comments
 #
 
-TARGETS = example
+TARGETS = xamg_test
 BASEPATH = ../..
 
 include ../../Makefile.base
@@ -58,15 +58,15 @@ $(eval $(call add_separate_object, scotch_wrapper.o))
 
 endif
 
-example: example.o cmdline.o ../common/cmdline/cmdline.o $(XAMG_SEP_LIB)
-	$(MPICXX) example.o cmdline.o ../common/cmdline/cmdline.o -o example $(LDFLAGS) $(LIBS)
+xamg_test: xamg_test.o cmdline.o ../common/cmdline/cmdline.o $(XAMG_SEP_LIB)
+	$(MPICXX) xamg_test.o cmdline.o ../common/cmdline/cmdline.o -o xamg_test $(LDFLAGS) $(LIBS)
 
-example.o: ex_blas.h ex_hypre.h ../common/system/system.h ex_output.h ex_solver.h ex_spmv.h
+xamg_test.o: tst_blas.h tst_hypre.h ../common/system/system.h tst_output.h tst_solver.h tst_spmv.h
 cmdline.o: cmdline.h
 ../common/cmdline/cmdline.o: ../common/cmdline/cmdline.h
  
 clean::
-	rm -f example.o cmdline.o ../common/cmdline/cmdline.o example
+	rm -f xamg_test.o cmdline.o ../common/cmdline/cmdline.o xamg_test
 
 
 

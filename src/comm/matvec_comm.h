@@ -37,8 +37,11 @@
 #include "comm/shm_sync.h"
 
 #include "blas/blas.h"
+#include "init.h"
 
 ///////////////////
+
+extern XAMG::time_monitor monitor;
 
 namespace XAMG {
 namespace comm {
@@ -211,13 +214,69 @@ struct comm_p2p {
         }
     }
 
+    template <typename F>
     void finalize_recv() {
-        if (cross_comm_group.member_proc) {
-            mpi::waitall(recv.get_tokens());
-        }
-        recv_syncall.init();
+        if (sharing_mode != mem::NODE) {
+            if (cross_comm_group.member_proc) {
+                mpi::waitall(recv.get_tokens());
+            }
+            recv_syncall.init();
 
-        recv_syncall.wait();
+            recv_syncall.wait();
+            // mpi::barrier(intra_comm_group.comm);
+        } else {
+            //            Element-wise vector replication
+            /*
+            int idx;
+            for (size_t i = 0; i < recv.obj.size(); ++i) {
+                monitor.start("node_recv_wait");
+                if (cross_comm_group.member_proc) {
+                    idx = mpi::waitany(recv.get_tokens());
+                    // XAMG::out << XAMG::ALLRANKS << "recv vecsize: " << recv.obj[idx].data.size << std::endl;
+                }
+                monitor.stop("node_recv_wait");
+
+                monitor.start("node_recv_bcast");
+                // TODO: to be replaced with ShM data exchange
+                if (id.numa_master_process())
+                    mpi::bcast<int>(&idx, 1, 0, mpi::CROSS_NUMA);
+                mpi::bcast<int>(&idx, 1, 0, mpi::INTRA_NUMA);
+                monitor.stop("node_recv_bcast");
+
+                monitor.start("node_recv_replicate");
+                recv.obj[idx].data.replicate_buffer<F>();
+                monitor.stop("node_recv_replicate");
+            }
+            monitor.start("node_recv_barrier");
+            mpi::barrier(mpi::INTRA_NUMA);
+            monitor.stop("node_recv_barrier");
+*/
+            //            Group-wise vector replication
+            /**/
+            monitor.start("node_recv_wait");
+            if (cross_comm_group.member_proc) {
+                mpi::waitall(recv.get_tokens());
+                // XAMG::out << XAMG::ALLRANKS << "recv vecsize: " << recv.obj[idx].data.size << std::endl;
+            }
+            monitor.stop("node_recv_wait");
+
+            if (id.numa_master_process())
+                mpi::barrier(mpi::CROSS_NUMA);
+            mpi::barrier(mpi::INTRA_NUMA);
+            // if (id.numa_master_process())
+            //     mpi::barrier(cross_comm_group.comm);
+            // mpi::barrier(intra_comm_group.comm);
+
+            monitor.start("node_recv_replicate");
+            for (size_t i = 0; i < recv.obj.size(); ++i)
+                recv.obj[i].data.replicate_buffer<F>();
+            monitor.stop("node_recv_replicate");
+
+            monitor.start("node_recv_barrier");
+            mpi::barrier(mpi::INTRA_NUMA);
+            monitor.stop("node_recv_barrier");
+            /**/
+        }
     }
 
     void reset_send() { send_syncall2.init(); }
@@ -232,9 +291,10 @@ struct comm_p2p {
 
         send_syncone.wait();
         if (cross_comm_group.member_proc) {
-            for (size_t i = 0; i < send.obj.size(); ++i)
+            for (size_t i = 0; i < send.obj.size(); ++i) {
                 send.obj[i].mpi_send_async<F, NV>(send.get_token(i), cross_comm_group.comm);
-            // XAMG::out << ALLRANKS << "proc " << id.gl_proc << " sends " << m.node_comm.send.obj[i].data.size << " to " << m.node_comm.send.obj[i].nbr << std::endl;
+                // XAMG::out << ALLRANKS << "proc " << id.gl_proc << " sends " << send.obj[i].data.size << " to " << send.obj[i].nbr << std::endl;
+            }
         }
 #ifndef SHM_OPT3
         send_syncall.init();

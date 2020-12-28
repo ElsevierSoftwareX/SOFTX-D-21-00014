@@ -167,7 +167,7 @@ template <typename F, uint16_t NV>
 template <typename T1, typename T2>
 void MultiGrid<F, NV>::MG_cycle(vector::vector &x, vector::vector &b, uint8_t level,
                                 uint16_t mg_cycle, const vector::vector &iconv) {
-    monitor.alloc.start();
+    monitor.start("alloc");
     const vector::vector &a0 = blas::ConstVectorsCache<T1>::get_zeroes_vec(NV);
     const vector::vector &a1 = blas::ConstVectorsCache<T1>::get_ones_vec(NV);
     const vector::vector &a_1 = blas::ConstVectorsCache<T1>::get_minus_ones_vec(NV);
@@ -180,7 +180,7 @@ void MultiGrid<F, NV>::MG_cycle(vector::vector &x, vector::vector &b, uint8_t le
 
     vector::vector iconv2;
     iconv2.alloc<T2>(1, NV);
-    monitor.alloc.stop();
+    monitor.stop("alloc");
 
     /////////
 
@@ -270,16 +270,16 @@ void MultiGrid<F, NV>::solve(const vector::vector &conv, XAMG::mpi::token &tok) 
     uint16_t max_iters;
     uint16_t conv_info;
     uint16_t mg_cycle;
-    monitor.params.start();
+    monitor.start("params");
     param_list.get_value("convergence_check", conv_check);
     param_list.get_value("max_iters", max_iters);
     param_list.get_value("convergence_info", conv_info);
     param_list.get_value("mg_cycle", mg_cycle);
-    monitor.params.stop();
+    monitor.stop("params");
     stats.reset(conv_check);
     auto &it = stats.iters;
 
-    monitor.alloc.start();
+    monitor.start("alloc");
     // inverted convergence flag; used to switch off updates to converged RHSs
     vector::vector iconv(conv);
 
@@ -288,7 +288,7 @@ void MultiGrid<F, NV>::solve(const vector::vector &conv, XAMG::mpi::token &tok) 
     vector::vector rho0, res;
     rho0.alloc<F>(1, NV);
     res.alloc<F>(1, NV);
-    monitor.alloc.stop();
+    monitor.stop("alloc");
 
     /////////
 

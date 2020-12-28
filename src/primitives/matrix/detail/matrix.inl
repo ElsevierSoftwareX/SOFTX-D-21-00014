@@ -517,7 +517,7 @@ void matrix::collect_matrix_stats() {
         const auto &node_layer = data_layer.find(segment::NODE)->second;
         uint32_t proc_recv_vol = 0;
         for (const auto &offd : node_layer.offd) {
-            proc_recv_vol += offd.data->get_block_ncols();
+            proc_recv_vol += offd.data->get_ncols();
         }
         uint32_t total;
 

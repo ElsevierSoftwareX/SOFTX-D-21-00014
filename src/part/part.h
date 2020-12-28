@@ -171,5 +171,11 @@ static inline std::shared_ptr<part> get_shared_part() {
     return std::shared_ptr<part>(new part);
 }
 
+static inline std::shared_ptr<part> make_partitioner(uint64_t local_size) {
+    auto p = std::shared_ptr<part>(new part);
+    p->get_part(local_size);
+    return p;
+}
+
 } // namespace part
 } // namespace XAMG

@@ -176,10 +176,10 @@ struct base_solver : public base_solver_interface {
         assert(setup_done);
         float32_t abs_tol, rel_tol;
         bool convergence_flag = true;
-        monitor.params.start();
+        monitor.start("params");
         param_list.get_value("abs_tolerance", abs_tol);
         param_list.get_value("rel_tolerance", rel_tol);
-        monitor.params.stop();
+        monitor.stop("params");
 
         std::vector<F> res_elem = res.get_element<F>(0);
         std::vector<F> res0_elem = res0.get_element<F>(0);
@@ -204,10 +204,10 @@ struct base_solver : public base_solver_interface {
 
     bool converged(const vector::vector &res, const vector::vector &res0, vector::vector &conv) {
         uint16_t conv_check, conv_info;
-        monitor.params.start();
+        monitor.start("params");
         param_list.get_value("convergence_check", conv_check);
         param_list.get_value("convergence_info", conv_info);
-        monitor.params.stop();
+        monitor.stop("params");
 
         if (conv_check) {
             if (conv_info) {

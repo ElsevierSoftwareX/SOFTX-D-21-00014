@@ -271,13 +271,13 @@ void get_graph_partitioning(const XAMG::matrix::csr_matrix<F, I1, I2, I3, I4> &m
     std::vector<int> vwgt(graph_csr.nrows, 1);
 
     XAMG::mpi::barrier(comm_group.comm);
-    double t1 = XAMG::io::timer();
+    double t1 = XAMG::sys::timer();
 
     graph_decomp(iproc_indx.data(), row_ptr, col_ptr, vwgt.data(), comm_group.nprocs,
                  partitioning.data(), layer);
 
     XAMG::mpi::barrier(comm_group.comm);
-    double t2 = XAMG::io::timer();
+    double t2 = XAMG::sys::timer();
 
     XAMG::out << XAMG::LOG << "Decomposition completed : Matrix size = " << iproc_indx.back()
               << " \t Nblocks = " << comm_group.nprocs << " \t Partitioning time : " << t2 - t1

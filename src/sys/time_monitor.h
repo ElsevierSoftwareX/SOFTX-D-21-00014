@@ -26,7 +26,7 @@
 #pragma once
 
 #include "xamg_types.h"
-#include "io/io.h"
+#include "sys/timer.h"
 
 extern ID id;
 
@@ -34,6 +34,7 @@ namespace XAMG {
 
 struct time_monitor_object {
     bool enabled;
+    bool active;
     float64_t t;
 
     float64_t timer;
@@ -44,54 +45,100 @@ struct time_monitor_object {
         reset();
     }
     void reset() {
-#ifdef XAMG_MONITOR
         t = 0;
         timer = 0;
         cntr = 0;
-#endif
+        active = false;
     }
 
-    void enable() {
-#ifdef XAMG_MONITOR
-        enabled = true;
-#endif
-    }
-    void disable() {
-#ifdef XAMG_MONITOR
-        enabled = false;
-#endif
-    }
+    void enable() { enabled = true; }
+    void disable() { enabled = false; }
     void start() {
-#ifdef XAMG_MONITOR
-        t = io::timer();
+        assert(active == false);
+        t = sys::timer();
         ++cntr;
-#endif
+        active = true;
     }
     void stop() {
-#ifdef XAMG_MONITOR
-        timer += io::timer() - t;
-#endif
+        assert(active == true);
+        timer += sys::timer() - t;
+        active = false;
     }
 };
 
 struct time_monitor {
-    time_monitor_object alloc;
-    time_monitor_object params;
+    std::map<std::string, time_monitor_object> list;
 
     time_monitor() {}
+
+    void add(const std::string &key) {
+#ifdef XAMG_MONITOR
+        if (list.find(key) == list.end()) {
+            list.emplace(std::make_pair(key, time_monitor_object()));
+            // XAMG::out << "Adding key " << key << " to the monitor list" << std::endl;
+        }
+#endif
+    }
+
     void reset() {
-        alloc.reset();
-        params.reset();
+#ifdef XAMG_MONITOR
+        for (auto &obj : list)
+            obj.second.reset();
+#endif
     }
 
     void enable() {
-        alloc.enable();
-        params.enable();
+#ifdef XAMG_MONITOR
+        for (auto &obj : list)
+            obj.second.enable();
+#endif
     }
 
     void disable() {
-        alloc.disable();
-        params.disable();
+#ifdef XAMG_MONITOR
+        for (auto &obj : list)
+            obj.second.disable();
+#endif
+    }
+
+    void start(const std::string &key) {
+#ifdef XAMG_MONITOR
+        if (list.find(key) != list.end()) {
+            list[key].start();
+        }
+#endif
+    }
+
+    void stop(const std::string &key) {
+#ifdef XAMG_MONITOR
+        if (list.find(key) != list.end()) {
+            list[key].stop();
+        }
+#endif
+    }
+
+    void activate_group(const std::string &grp) {
+#ifdef XAMG_MONITOR
+        if (grp == "hsgs") {
+            add("hsgs_irecv");
+            add("hsgs_isend");
+            add("hsgs_diag");
+            add("hsgs_core_offd");
+            add("hsgs_numa_offd");
+            add("hsgs_node_offd");
+            add("hsgs_loop");
+            add("hsgs_fin_comm");
+            add("hsgs_serv");
+        } else if (grp == "main") {
+            add("alloc");
+            add("params");
+        } else if (grp == "node_recv") {
+            add("node_recv_wait");
+            add("node_recv_bcast");
+            add("node_recv_replicate");
+            add("node_recv_barrier");
+        }
+#endif
     }
 
     void print() {
@@ -100,9 +147,15 @@ struct time_monitor {
         // usleep(id.gl_proc * 1e3);
         // output of proc #0 is typically enough to estimate time losses
         // XAMG::out << XAMG::ALLRANKS << "MONITOR: proc " << id.gl_proc
-        XAMG::out << XAMG::LOG << "MONITOR: proc " << id.gl_proc << " || alloc : " << alloc.timer
-                  << "(" << alloc.cntr << ")"
-                  << " || params : " << params.timer << "(" << params.cntr << ")" << std::endl;
+
+        XAMG::out << XAMG::ALLRANKS << XAMG::LOG << "MONITOR: proc " << id.gl_proc << std::endl;
+
+        for (auto &obj : list) {
+            // XAMG::out << " || " << obj.first << " : " << obj.second.timer << "(" << obj.second.cntr << ")";
+            XAMG::out << XAMG::ALLRANKS << XAMG::LOG << "\t\t" << obj.first << " : "
+                      << obj.second.timer << " s. (" << obj.second.cntr << ")" << std::endl;
+        }
+        // XAMG::out << std::endl;
         // mpi::barrier();
 #endif
     }

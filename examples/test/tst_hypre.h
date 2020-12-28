@@ -25,23 +25,23 @@
 
 #pragma once
 
-//#define XAMG_DBG_HEADER
-//#undef XAMG_DBG_HEADER
+#include <hypre/hypre_wrapper.h>
 
-//#define XAMG_EXPERIMENTAL_SOLVERS
-#undef XAMG_EXPERIMENTAL_SOLVERS
+void tst_hypre_test(XAMG::matrix::matrix &m, XAMG::vector::vector &x, XAMG::vector::vector &y,
+                    const XAMG::params::global_param_list &params) {
 
-#undef XAMG_USE_BASIC_INT_TYPES
-#ifdef XAMG_LIMIT_TYPES_USAGE
-#define XAMG_USE_BASIC_INT_TYPES
-#endif
+    for (int it = 0; it < 3; ++it) {
+        XAMG::blas::set_const<float64_t, NV>(x, 0, true);
+        XAMG::out.norm<float64_t, NV>(x, " x0 ");
+        XAMG::out.norm<float64_t, NV>(y, " y0 ");
 
-//#define XAMG_IO_DEBUG
+        if (NV == 1) {
+            XAMG::hypre::solve(m, x, y, params);
 
-//#define SHM_OPT3
-
-//#define XAMG_MONITOR
-
-#ifdef XAMG_DEBUG
-#define XAMG_EXTRA_CHECKS
-#endif
+            XAMG::out.norm<float64_t, NV>(x, " x ");
+            //            XAMG::XAMG::out.norm<float64_t, NV>(y, " YY ");
+        } else {
+            XAMG::out << XAMG::WARN << "Hypre test mode is allowed for single rhs vector only\n";
+        }
+    }
+}

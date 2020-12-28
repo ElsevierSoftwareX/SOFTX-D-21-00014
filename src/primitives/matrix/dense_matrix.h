@@ -35,6 +35,8 @@
 
 #include "blas/blas.h"
 
+#include "bit_operations.h"
+
 #include "comm/data_exchange.h"
 
 /////////

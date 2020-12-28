@@ -66,7 +66,7 @@ void Axpy_block(matrix::matrix &m, const vector::vector &x, vector::vector &y, u
     numa_layer.diag.data->Axpy(numa_layer.diag.blas2_driver, x, y, nv);
     numa_layer.p2p_comm.barrier2.init();
 
-    numa_layer.p2p_comm.finalize_recv();
+    numa_layer.p2p_comm.finalize_recv<F>();
     for (uint32_t i = 0; i < numa_layer.offd.size(); ++i) {
         numa_layer.offd[i].data->Axpy(numa_layer.offd[i].blas2_driver,
                                       numa_layer.p2p_comm.recv.obj[i].data, y, nv);
@@ -74,7 +74,7 @@ void Axpy_block(matrix::matrix &m, const vector::vector &x, vector::vector &y, u
     }
     numa_layer.p2p_comm.reset_recv();
 
-    node_layer.p2p_comm.finalize_recv();
+    node_layer.p2p_comm.finalize_recv<F>();
     for (uint32_t i = 0; i < node_layer.offd.size(); ++i)
         node_layer.offd[i].data->Axpy(node_layer.offd[i].blas2_driver,
                                       node_layer.p2p_comm.recv.obj[i].data, y, nv);
@@ -117,14 +117,14 @@ void Ax_y_block(matrix::matrix &m, const vector::vector &x, vector::vector &y, u
     numa_layer.diag.data->Ax_y(numa_layer.diag.blas2_driver, x, y, nv);
     numa_layer.p2p_comm.barrier2.init();
 
-    numa_layer.p2p_comm.finalize_recv();
+    numa_layer.p2p_comm.finalize_recv<F>();
     for (uint32_t i = 0; i < numa_layer.offd.size(); ++i) {
         numa_layer.offd[i].data->Axpy(numa_layer.offd[i].blas2_driver,
                                       numa_layer.p2p_comm.recv.obj[i].data, y, nv);
     }
     numa_layer.p2p_comm.reset_recv();
 
-    node_layer.p2p_comm.finalize_recv();
+    node_layer.p2p_comm.finalize_recv<F>();
     for (uint32_t i = 0; i < node_layer.offd.size(); ++i) {
         node_layer.offd[i].data->Axpy(node_layer.offd[i].blas2_driver,
                                       node_layer.p2p_comm.recv.obj[i].data, y, nv);
@@ -181,6 +181,8 @@ template <typename F, const uint16_t NV>
 void SGS(matrix::matrix &m, const vector::vector &b, vector::vector &x, vector::vector &t,
          const vector::vector &relax_factor, uint16_t nv,
          XAMG::mpi::token &tok = XAMG::mpi::null_token) {
+    monitor.start("hsgs_loop");
+    monitor.start("hsgs_serv");
     assert(m.segmentation == matrix::SEGMENT_BY_BLOCKS);
     if (!m.if_drivers_allocated)
         generate_blas2_drivers<NV>(m);
@@ -193,8 +195,11 @@ void SGS(matrix::matrix &m, const vector::vector &b, vector::vector &x, vector::
     auto &node_layer = m.data_layer.find(segment::NODE)->second;
     assert(node_layer.p2p_comm.recv.obj.size() == node_layer.offd.size());
     assert(numa_layer.p2p_comm.recv.obj.size() == numa_layer.offd.size());
+    monitor.stop("hsgs_serv");
 
     //    numa_layer.p2p_comm.numa_syncone.init();
+
+    monitor.start("hsgs_irecv");
     numa_layer.p2p_comm.barrier.init();
 
     //    XAMG::out << XAMG::DBG;
@@ -203,55 +208,70 @@ void SGS(matrix::matrix &m, const vector::vector &b, vector::vector &x, vector::
     node_layer.p2p_comm.start_recv<F, NV>();
     numa_layer.p2p_comm.start_recv<F, NV>();
     core_layer.p2p_comm.start_recv<F, NV>();
+    monitor.stop("hsgs_irecv");
 
     //    numa_layer.p2p_comm.numa_syncone.wait();
+    monitor.start("hsgs_isend");
     numa_layer.p2p_comm.barrier.wait();
     node_layer.p2p_comm.start_send<F, NV>(x);
     numa_layer.p2p_comm.start_send<F, NV>(x);
     core_layer.p2p_comm.start_send<F, NV>(x);
+    monitor.stop("hsgs_isend");
 
+    monitor.start("hsgs_core_offd");
     blas::set_const<F, NV>(t, 0.0, true);
 
-    core_layer.p2p_comm.finalize_recv();
+    core_layer.p2p_comm.finalize_recv<F>();
     for (uint32_t i = 0; i < core_layer.offd.size(); ++i) {
         core_layer.offd[i].data->Axpy(core_layer.offd[i].blas2_driver,
                                       core_layer.p2p_comm.recv.obj[i].data, t, nv);
     }
     core_layer.p2p_comm.reset_recv();
+    monitor.stop("hsgs_core_offd");
 
-    numa_layer.p2p_comm.finalize_recv();
+    monitor.start("hsgs_numa_offd");
+    numa_layer.p2p_comm.finalize_recv<F>();
     for (uint32_t i = 0; i < numa_layer.offd.size(); ++i) {
         numa_layer.offd[i].data->Axpy(numa_layer.offd[i].blas2_driver,
                                       numa_layer.p2p_comm.recv.obj[i].data, t, nv);
     }
     numa_layer.p2p_comm.reset_recv();
+    monitor.stop("hsgs_numa_offd");
 
-    node_layer.p2p_comm.finalize_recv();
+    monitor.start("hsgs_node_offd");
+    node_layer.p2p_comm.finalize_recv<F>();
     for (uint32_t i = 0; i < node_layer.offd.size(); ++i) {
         node_layer.offd[i].data->Axpy(node_layer.offd[i].blas2_driver,
                                       node_layer.p2p_comm.recv.obj[i].data, t, nv);
     }
     node_layer.p2p_comm.reset_recv();
+    monitor.stop("hsgs_node_offd");
 
     //////////
 
+    monitor.start("hsgs_diag");
     blas::axpby<F, NV>(1.0, b, -1.0, t);
 
     if (x.if_zero)
         blas::set_const<F, NV>(x, 0.0, true);
     core_layer.diag.data->SGS(core_layer.diag.blas2_driver, m.inv_diag(), t, x, relax_factor, nv);
+    monitor.stop("hsgs_diag");
 
     /////////
 
     //    XAMG::out << XAMG::DBG;
     //    XAMG::out.norm<F, NV>(x, "HSGS: X end");
 
+    monitor.start("hsgs_fin_comm");
     core_layer.p2p_comm.finalize_send();
     core_layer.p2p_comm.reset_send();
     numa_layer.p2p_comm.finalize_send();
     numa_layer.p2p_comm.reset_send();
     node_layer.p2p_comm.finalize_send();
     node_layer.p2p_comm.reset_send();
+    monitor.stop("hsgs_fin_comm");
+
+    monitor.stop("hsgs_loop");
 }
 
 template <typename F, const uint16_t NV>
