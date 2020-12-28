@@ -72,9 +72,9 @@ make CONFIG=generic CXX=icpc MPICXX=/opt/openmpi-1.5.0/bin/mpicxx
 
 ## Documentation
 
-[Comprehensive build documentation]: https://gitlab.com/xamg/xamg/-/wikis/docs/XAMG_build_guideline
+[Comprehensive build documentation](https://gitlab.com/xamg/xamg/-/wikis/docs/XAMG_build_guideline)
 
-[List of numerical methods' parameters]: https://gitlab.com/xamg/xamg/-/wikis/docs/XAMG_params_reference
+[List of numerical methods' parameters](https://gitlab.com/xamg/xamg/-/wikis/docs/XAMG_params_reference)
 
 
 ## Acknowledgements
