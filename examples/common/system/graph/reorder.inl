@@ -190,6 +190,7 @@ void get_global_mapping(std::vector<I> &global_mapping, std::vector<I> &local_ma
         XAMG::mpi::bcast<I>(global_mapping.data(), global_mapping.size(), 0, XAMG::mpi::INTRA_NUMA);
 }
 
+/*
 template <typename F, typename I1, typename I2, typename I3, typename I4>
 void get_filtered_graph(const XAMG::matrix::csr_matrix<F, I1, I2, I3, I4> &mat_csr,
                         XAMG::matrix::csr_matrix<F, I1, I2, I3, I4> &filt_csr) {
@@ -232,6 +233,7 @@ void get_filtered_graph(const XAMG::matrix::csr_matrix<F, I1, I2, I3, I4> &mat_c
         filt_csr.upload_row(l, col, val_F, col.size());
     }
 }
+*/
 
 template <typename F, typename I1, typename I2, typename I3, typename I4>
 void get_graph_partitioning(const XAMG::matrix::csr_matrix<F, I1, I2, I3, I4> &mat_csr,
@@ -239,12 +241,15 @@ void get_graph_partitioning(const XAMG::matrix::csr_matrix<F, I1, I2, I3, I4> &m
     XAMG::mpi::comm_pool comm_group(XAMG::mpi::cross_layer_comm(layer));
 
     XAMG::out << XAMG::LOG << "Graph reordering, layer " << layer << std::endl;
-    XAMG::matrix::csr_matrix<F, I1, I2, I3, I4> filt_csr;
-    get_filtered_graph(mat_csr, filt_csr);
+    // XAMG::matrix::csr_matrix<F, I1, I2, I3, I4> filt_csr;
+    // get_filtered_graph(mat_csr, filt_csr);
+
+    // XAMG::matrix::csr_matrix<F, int, int, int, int> graph_csr;
+    // XAMG::matrix::convert(filt_csr, graph_csr);
 
     XAMG::matrix::csr_matrix<F, int, int, int, int> graph_csr;
-    XAMG::matrix::convert(filt_csr, graph_csr);
-    //    graph_csr.print();
+    XAMG::matrix::convert(mat_csr, graph_csr);
+    graph_csr.drop_diag_elements();
 
     ///////////////////
     //  vertex weights
