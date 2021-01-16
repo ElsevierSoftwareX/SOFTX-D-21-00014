@@ -66,6 +66,8 @@ void Axpy_block(matrix::matrix &m, const vector::vector &x, vector::vector &y, u
     numa_layer.diag.data->Axpy(numa_layer.diag.blas2_driver, x, y, nv);
     numa_layer.p2p_comm.barrier2.init();
 
+    // workaround...
+    mpi::barrier(mpi::INTRA_NUMA);
     numa_layer.p2p_comm.finalize_recv<F>();
     for (uint32_t i = 0; i < numa_layer.offd.size(); ++i) {
         numa_layer.offd[i].data->Axpy(numa_layer.offd[i].blas2_driver,
@@ -117,6 +119,8 @@ void Ax_y_block(matrix::matrix &m, const vector::vector &x, vector::vector &y, u
     numa_layer.diag.data->Ax_y(numa_layer.diag.blas2_driver, x, y, nv);
     numa_layer.p2p_comm.barrier2.init();
 
+    // workaround...
+    mpi::barrier(mpi::INTRA_NUMA);
     numa_layer.p2p_comm.finalize_recv<F>();
     for (uint32_t i = 0; i < numa_layer.offd.size(); ++i) {
         numa_layer.offd[i].data->Axpy(numa_layer.offd[i].blas2_driver,
@@ -229,6 +233,8 @@ void SGS(matrix::matrix &m, const vector::vector &b, vector::vector &x, vector::
     core_layer.p2p_comm.reset_recv();
     monitor.stop("hsgs_core_offd");
 
+    // workaround...
+    mpi::barrier(mpi::INTRA_NUMA);
     monitor.start("hsgs_numa_offd");
     numa_layer.p2p_comm.finalize_recv<F>();
     for (uint32_t i = 0; i < numa_layer.offd.size(); ++i) {

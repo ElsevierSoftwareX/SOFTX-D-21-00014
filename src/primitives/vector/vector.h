@@ -297,6 +297,7 @@ struct vector {
 
             // XAMG::out << XAMG::ALLRANKS << "NODE-Shared block size: " << block_size << " " << block_size * nv * sizeof(T) << std::endl;
             if (id.nd_numa) {
+                // local NUMA vector replication
                 vec_b.buffer_size[id.nd_numa] = block_size;
                 vec_b.bufs[id.nd_numa] = mem::alloc_buffer(
                     vec_b.buffer_size[id.nd_numa] * nv * sizeof(T), mem::NUMA, id.nd_numa);
@@ -351,6 +352,11 @@ struct vector {
         }
         case mem::NODE: {
             mem::free_buffer(vec_b.bufs[0], mem::NODE);
+
+            if (id.nd_numa) {
+                mem::free_buffer(vec_b.bufs[id.nd_numa], mem::NUMA);
+            }
+
             break;
         }
         case mem::NUMA_NODE: {

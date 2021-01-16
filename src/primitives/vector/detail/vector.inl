@@ -226,6 +226,7 @@ void vector::get_core_range(uint64_t &core_size, uint64_t &core_offset) const {
         break;
     }
     default: {
+        core_offset = core_size = 0; // to avoid compilation warnings
         assert(0);
         break;
     }

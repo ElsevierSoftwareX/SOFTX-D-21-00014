@@ -401,6 +401,57 @@ struct csr_matrix : backend {
         val.if_zero = false;
     }
 
+    void drop_diag_elements() {
+        assert(!if_empty);
+        assert(!if_indexed);
+        assert(sharing_mode == mem::CORE);
+
+        row.check(vector::vector::allocated);
+        col.check(vector::vector::allocated);
+        val.check(vector::vector::allocated);
+
+        auto row_ptr = row.get_aligned_ptr<I1>();
+        auto col_ptr = col.get_aligned_ptr<I2>();
+        auto val_ptr = val.get_aligned_ptr<F>();
+
+        ////
+
+        std::vector<F> val_F;
+
+        uint64_t i1, i2;
+        uint64_t cntr = 0;
+        i1 = row_ptr[cntr];
+        for (uint64_t l = 0; l < nrows; ++l) {
+            i2 = row_ptr[l + 1];
+            uint32_t ii = i1;
+            bool diag_found = false;
+            while ((!diag_found) && (ii < i2)) {
+                if (col_ptr[ii] + block_col_offset == l + block_row_offset)
+                    diag_found = true;
+                else
+                    ++ii;
+            }
+            assert(diag_found);
+
+            for (size_t jj = i1; jj < ii; ++jj) {
+                col_ptr[cntr] = col_ptr[jj];
+                val_ptr[cntr] = val_ptr[jj];
+                ++cntr;
+            }
+
+            for (size_t jj = ii + 1; jj < i2; ++jj) {
+                col_ptr[cntr] = col_ptr[jj];
+                val_ptr[cntr] = val_ptr[jj];
+                ++cntr;
+            }
+
+            row_ptr[l + 1] = cntr;
+            i1 = i2;
+        }
+        nonzeros -= nrows;
+        assert(nonzeros >= 0);
+    }
+
     virtual uint16_t encode_hash() const {
         uint16_t hash = (define_int_type(nonzeros) << I1_OFFSET) |
                         (define_int_type(ncols) << I2_OFFSET) |

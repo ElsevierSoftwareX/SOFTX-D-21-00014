@@ -78,8 +78,7 @@ void hypre_base::set_matrix_offd_block(const matrix::matrix_block &offd,
 void hypre_base::assemble_matrix(const matrix::matrix &m) {
     uint64_t l;
     // Check: square input matrix only allowed
-    assert(m.row_part->node_layer.block_indx.back() + m.row_part->node_layer.block_size.back() ==
-           m.col_part->node_layer.block_indx.back() + m.col_part->node_layer.block_size.back());
+    assert(m.row_part->node_layer.block_indx.back() == m.col_part->node_layer.block_indx.back());
 
     uint64_t core_size, core_offset;
     auto &numa_layer = m.data_layer.find(segment::NUMA)->second;
@@ -88,10 +87,16 @@ void hypre_base::assemble_matrix(const matrix::matrix &m) {
     core_size = m.row_part->core_layer.block_size[id.nm_core];
     core_offset = m.row_part->core_layer.block_indx[id.nm_core];
 
-    int row_block_indx = numa_layer.diag.data->block_row_offset + core_offset;
+    int row_block_indx = m.row_part->node_layer.block_indx[id.gl_node] +
+                         m.row_part->numa_layer.block_indx[id.nd_numa] +
+                         m.row_part->core_layer.block_indx[id.nm_core];
     int row_block_size = core_size;
     int col_block_indx = row_block_indx;
     int col_block_size = row_block_size;
+
+    if (!numa_layer.diag.data->if_empty) {
+        assert((uint32_t)row_block_indx == numa_layer.diag.data->block_row_offset + core_offset);
+    }
 
     HYPRE_IJMatrixCreate(*((MPI_Comm *)id.get_comm()), row_block_indx,
                          row_block_indx + row_block_size - 1, col_block_indx,
